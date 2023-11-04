@@ -8,9 +8,10 @@ from PySide6.QtCore import QFile, Slot
 from PySide6.QtGui import QKeyEvent
 
 from PySide6.QtCore import QTime, QTimer, Qt
-from PySide6.QtWidgets import QLCDNumber, QPushButton, QLabel
+from PySide6.QtWidgets import QLCDNumber, QPushButton, QLabel, QDialog
 from dataclasses import dataclass
 
+from prefdialog import PrefDialog
 from ui_mainwindow import Ui_MainWindow
 
 @dataclass
@@ -25,7 +26,6 @@ class ClickScore:
 class MainWindow(QMainWindow):
 	def __init__(self):
 		super(MainWindow, self).__init__()
-		# self.ui = self.load_ui()
 		self.ui = Ui_MainWindow()
 		self.ui.setupUi(self)
 
@@ -36,6 +36,9 @@ class MainWindow(QMainWindow):
 
 		# Set up the undo signal.
 		self.ui.actionUndoReset.triggered.connect(self.undoReset)
+
+		# Set up a way to get to the pref dialog.
+		self.ui.actionPrefs.triggered.connect(self.showPrefDialog)
 
 		# Get the clicks ready.
 		self.curClicks = ClickScore()
@@ -80,7 +83,9 @@ class MainWindow(QMainWindow):
 	
 	@Slot()
 	def showPrefDialog(self):
-		return
+		d = PrefDialog()
+		if d.exec() == QDialog.DialogCode.Accepted:
+			self.timerRedraw()
 
 
 	# "private:"
