@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QLCDNumber, QPushButton, QLabel, QDialog
 from dataclasses import dataclass
 
 from prefdialog import PrefDialog
+from clickprefs import ClickPrefs
 from ui_mainwindow import Ui_MainWindow
 
 @dataclass
@@ -26,9 +27,13 @@ class ClickScore:
 class MainWindow(QMainWindow):
 	def __init__(self):
 		super(MainWindow, self).__init__()
+
+		# We need some preferences.
+		self.prefs = ClickPrefs()
+
+		# We need a UI.
 		self.ui = Ui_MainWindow()
 		self.ui.setupUi(self)
-
 		self.setWindowTitle("44clicker")
 
 		# Set up the exit strategy.
@@ -83,7 +88,7 @@ class MainWindow(QMainWindow):
 	
 	@Slot()
 	def showPrefDialog(self):
-		d = PrefDialog()
+		d = PrefDialog(self)
 		if d.exec() == QDialog.DialogCode.Accepted:
 			self.timerRedraw()
 
@@ -106,13 +111,13 @@ class MainWindow(QMainWindow):
 			self.plusClick()
 		elif key == Qt.Key.Key_Period:
 			# Three plus clicks
-			self.plusClick(3) # todo: use prefs.multiClickWeight()
+			self.plusClick(self.prefs.multiClickWeight())
 		elif key == Qt.Key.Key_Z:
 			# One minus click
 			self.minusClick()
 		elif key == Qt.Key.Key_X:
 			# Three minus clicks
-			self.minusClick(-3) # todo: use prefs.multiclickWeight()
+			self.minusClick(-1 * self.prefs.multiClickWeight())
 		elif key == Qt.Key.Key_A:
 			# Major deduct level 1 (restart)
 			self.majorDeductClick(1)
@@ -143,11 +148,11 @@ class MainWindow(QMainWindow):
 	
 	def majorDeductClick(self, level:int):
 		if level == 1:
-			self.curClicks.majDeductLv1Clicks += 1 # todo: use prefs.mdWeight()
+			self.curClicks.majDeductLv1Clicks += self.prefs.MDWeight(1)
 		elif level == 2:
-			self.curClicks.majDeductLv2Clicks += 3 # see above
+			self.curClicks.majDeductLv2Clicks += self.prefs.MDWeight(2)
 		elif level == 3:
-			self.curClicks.majDeductLv3Clicks += 5 # see above
+			self.curClicks.majDeductLv3Clicks += self.prefs.MDWeight(3)
 
 		self.displayClicks()
 	
