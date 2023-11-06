@@ -5,7 +5,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QFile, Slot
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QKeyEvent, QPalette, QColor
 
 from PySide6.QtCore import QTime, QTimer, Qt
 from PySide6.QtWidgets import QLCDNumber, QPushButton, QLabel, QDialog
@@ -50,16 +50,17 @@ class MainWindow(QMainWindow):
 		self.lastClicks = ClickScore()
 		self.displayClicks()
 
-		# Initialize timers
-		self.fsTimer = QTimer(self)
-		self.dispRefreshTimer = QTimer(self)
-		# self.prefs = prefs I guess
-
+		# Initialize timers. For fsTimer we strive for millisecond accuracy.
+		self.fsTimer = QTimer()
 		self.fsTimer.setTimerType(Qt.TimerType.PreciseTimer)
 		self.fsTimer.setSingleShot(True)
-		# self.fsTimer.setInterval(prefs.totalTimeSetting())
+		self.fsTimer.setInterval(self.prefs.totalTimeSetting())
 		self.fsTimer.timeout.connect(self.timerFinished)
-		# self.timeRemaining = prefs.totalTimeSetting()
+		self.timeRemaining = self.prefs.totalTimeSetting()
+
+		# We're less concerned about dispRefreshTimer's accuracy.
+		# It doesn't really matter.
+		self.dispRefreshTimer = QTimer()
 		self.dispRefreshTimer.timeout.connect(self.timerRedraw)
 
 		self.timerRedraw()
@@ -69,11 +70,85 @@ class MainWindow(QMainWindow):
 	
 	@Slot()
 	def timerFinished(self):
-		return
+		self.timerStartPause(True)
 	
 	@Slot()
 	def timerRedraw(self):
-		return
+		# Cache the remaining time.
+		if self.fsTimer.isActive() == True:
+			self.timeRemaining = self.fsTimer.remainingTime()
+
+		# Center the digits, in the way a QLCDNumber understands.
+		# self.ui.timeElapsedLcd.setDigitCount()
+		# loool
+
+		# Figure out how much time is left.
+		timeElapsed = self.prefs.totalTimeSetting() - self.timeRemaining
+		# Make things add up on screen.
+		if self.prefs.timerDigits() == 1:
+			timeElapsed += 99
+		elif self.prefs.timerDigits() == 2:
+			timeElapsed += 9
+
+		# PARANOiA.mp3
+		if timeElapsed < 0:
+			timeElapsed = 0
+
+		# Divide time remaining down to minutes, seconds, smaller units...
+		# and push it out to the screen.
+		mm:int = self.timeRemaining / (60 * 1000)
+		# Seconds.
+		ss:int = (((self.timeRemaining % (60 * 1000)) + 
+			(0 if (self.prefs.timerDigits() != 0) else 999)) / 1000)
+		# Oh, we also don't want 2:00 to display as 1:60 when the timer is running.
+		# There might be a more elegant way to handle this.
+		if ss == 60:
+			ss = 0
+			mm += 1
+		
+		cc:int = (self.timeRemaining % 1000) / 10
+		if self.prefs.timerDigits() == 1:
+			cc /= 10
+
+		dispText = ""
+
+		if self.prefs.timerDigits() == 2:
+			dispText = "{0:0>2d}:{1:0>2d}.{2:0>2d}".format(int(mm), int(ss), int(cc))
+		elif self.prefs.timerDigits() == 1:
+			dispText = "{0:0>2d}:{1:0>2d}.{2:0>1d}".format(int(mm), int(ss), int(cc))
+		else: # timerDigits == 0 or > 2
+			dispText = "{0:0>2d}:{1:0>2d}".format(int(mm), int(ss))
+		self.ui.timeRemainingLcd.display(dispText)
+
+		# Do it again for time elapsed.
+		mm = timeElapsed / (60 * 1000)
+		ss = (timeElapsed % (60 * 1000)) / 1000
+		cc = (timeElapsed % 1000) / 10
+		if self.prefs.timerDigits() == 1:
+			cc /= 10
+		
+		if self.prefs.timerDigits() == 2:
+			dispText = "{0:0>2d}:{1:0>2d}.{2:0>2d}".format(int(mm), int(ss), int(cc))
+		elif self.prefs.timerDigits() == 1:
+			dispText = "{0:0>2d}:{1:0>2d}.{2:0>1d}".format(int(mm), int(ss), int(cc))
+		else: # timerDigits == 0 or > 2
+			dispText = "{0:0>2d}:{1:0>2d}".format(int(mm), int(ss))
+		self.ui.timeElapsedLcd.display(dispText)
+
+
+		# Turn the timers red when the time runs out.
+		pal = QPalette()
+		if self.timeRemaining == 0:
+			pal.setColor(QPalette.ColorRole.Window, QColor(222, 22, 22))
+			pal.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+		self.ui.timeRemainingLcd.setAutoFillBackground(True)
+		self.ui.timeElapsedLcd.setAutoFillBackground(True)
+		self.ui.timeRemainingLcd.setPalette(pal)
+		self.ui.timeElapsedLcd.setPalette(pal)
+		
+
+
+
 	
 	@Slot()
 	def undoReset(self):
@@ -201,10 +276,46 @@ class MainWindow(QMainWindow):
 		self.displayClicks()
 	
 	def timerStartPause(self, forceStop = False):
-		return
+		# If the timer is already running, pause it.
+		if self.fsTimer.isActive() == True or forceStop == True:
+			# Cache the remaining time and stop the fs timer.
+			self.timeRemaining = self.fsTimer.remainingTime()
+			self.fsTimer.stop()
+
+			# Hold bounds.
+			if self.timeRemaining < 0:
+				self.timeRemaining = 0
+
+			# Stop the refresh timer.
+			self.dispRefreshTimer.stop()
+
+			# One last redraw of the timer values.
+			self.timerRedraw()
+			return False
+		# If the timer isn't running, start it.
+		else:
+			# Automatically restart if the timer has expired.
+			if self.timeRemaining == 0:
+				self.timeRemaining = self.prefs.totalTimeSetting()
+			
+			# Load the countdown timer with the total remaining time and kick it off.
+			self.fsTimer.start(self.timeRemaining)
+
+			# Kick off the refresh timer, which will cause a redraw very soon.
+			self.dispRefreshTimer.start(self.prefs.timerDisplayRefresh())
+
+			return True
 	
 	def timerReset(self):
-		return
+		# Stop everything.
+		self.fsTimer.stop()
+		self.dispRefreshTimer.stop()
+
+		# Reload things afresh.
+		self.timeRemaining = self.prefs.totalTimeSetting()
+
+		# Redraw timer values.
+		self.timerRedraw()
 	
 
 
