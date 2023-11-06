@@ -95,19 +95,19 @@ class MainWindow(QMainWindow):
 
 		# Divide time remaining down to minutes, seconds, smaller units...
 		# and push it out to the screen.
-		mm:int = self.timeRemaining / (60 * 1000)
+		mm:int = self.timeRemaining // (60 * 1000)
 		# Seconds.
 		ss:int = (((self.timeRemaining % (60 * 1000)) + 
-			(0 if (self.prefs.timerDigits != 0) else 999)) / 1000)
+			(0 if (self.prefs.timerDigits != 0) else 999)) // 1000)
 		# Oh, we also don't want 2:00 to display as 1:60 when the timer is running.
 		# There might be a more elegant way to handle this.
 		if ss == 60:
 			ss = 0
 			mm += 1
 		
-		cc:int = (self.timeRemaining % 1000) / 10
+		cc:int = (self.timeRemaining % 1000) // 10
 		if self.prefs.timerDigits == 1:
-			cc /= 10
+			cc //= 10
 
 		dispText = ""
 
@@ -120,12 +120,12 @@ class MainWindow(QMainWindow):
 		self.ui.timeRemainingLcd.display(dispText)
 
 		# Do it again for time elapsed.
-		mm = timeElapsed / (60 * 1000)
-		ss = (timeElapsed % (60 * 1000)) / 1000
-		cc = (timeElapsed % 1000) / 10
+		mm = timeElapsed // (60 * 1000)
+		ss = (timeElapsed % (60 * 1000)) // 1000
+		cc = (timeElapsed % 1000) // 10
 		if self.prefs.timerDigits == 1:
-			cc /= 10
-		
+			cc //= 10
+
 		if self.prefs.timerDigits == 2:
 			dispText = "{0:0>2d}:{1:0>2d}.{2:0>2d}".format(int(mm), int(ss), int(cc))
 		elif self.prefs.timerDigits == 1:
