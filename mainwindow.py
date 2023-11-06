@@ -1,22 +1,21 @@
 # This Python file uses the following encoding: utf-8
-import os
-from pathlib import Path
 import sys
-
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QFile, Slot
-from PySide6.QtGui import QKeyEvent, QPalette, QColor
-
-from PySide6.QtCore import QTime, QTimer, Qt
-from PySide6.QtWidgets import QLCDNumber, QPushButton, QLabel, QDialog
 from dataclasses import dataclass
+
+from PySide6.QtCore import Qt, QTimer, Slot
+from PySide6.QtWidgets import QApplication, QMainWindow, QDialog
+from PySide6.QtGui import QKeyEvent, QPalette, QColor
 
 from prefdialog import PrefDialog
 from clickprefs import ClickPrefs
 from ui_mainwindow import Ui_MainWindow
 
+
 @dataclass
 class ClickScore:
+	"""
+	A set of individual clicks comprising a complete score.
+	"""
 	plusClicks:         int = 0
 	minusClicks:        int = 0
 	majDeductLv1Clicks: int = 0
@@ -68,11 +67,20 @@ class MainWindow(QMainWindow):
 	
 	@Slot()
 	def timerFinished(self):
+		"""
+		The timer has run out. Stop it.
+		"""
 		self.timerStartPause(True)
 	
 	
 	@Slot()
 	def timerRedraw(self):
+		"""
+		Redraw the LCD elements comprising the freestyle timer.
+
+		Note that this function assumes self.prefs.timerDigits is in range [0, 2].
+		"""
+
 		# Cache the remaining time.
 		if self.fsTimer.isActive() == True:
 			self.timeRemaining = self.fsTimer.remainingTime()
@@ -151,7 +159,9 @@ class MainWindow(QMainWindow):
 	
 	@Slot()
 	def undoReset(self):
-		# Perform a single-level undo operation in case we reset accidentally.
+		"""
+		Perform a single-level undo operation in case we reset accidentally.
+		"""
 		self.curClicks.plusClicks = self.lastClicks.plusClicks
 		self.curClicks.minusClicks = self.lastClicks.minusClicks
 		self.curClicks.majDeductLv1Clicks = self.lastClicks.majDeductLv1Clicks
@@ -163,12 +173,19 @@ class MainWindow(QMainWindow):
 
 	@Slot()
 	def showPrefDialog(self):
+		"""
+		Bring up the Preferences dialog box.
+		"""
 		d = PrefDialog(self)
 		if d.exec() == QDialog.DialogCode.Accepted:
 			self.timerRedraw()
 
 
 	def keyPressEvent(self, event: QKeyEvent):
+		"""
+		Here's where we handle pressed keys.
+		"""
+
 		# Attempt to defeat autorepeat. May or may not work consistently
 		# with PySide6, but it seems to work in my initial testing.
 		if event.isAutoRepeat() == True:
@@ -214,16 +231,25 @@ class MainWindow(QMainWindow):
 
 
 	def plusClick(self, qty:int = 1):
+		"""
+		Adjust the plus click counter, then update the window.
+		"""
 		self.curClicks.plusClicks += qty
 		self.displayClicks()
 	
 
 	def minusClick(self, qty:int = -1):
+		"""
+		Adjust the minus click counter, then update the window.
+		"""
 		self.curClicks.minusClicks += qty
 		self.displayClicks()
 	
 
 	def majorDeductClick(self, level:int):
+		"""
+		Adjust a counter for major deducts, then update the window.
+		"""
 		if level == 1:
 			self.curClicks.majDeductLv1Clicks += self.prefs.MDWeight(1)
 		elif level == 2:
@@ -235,6 +261,9 @@ class MainWindow(QMainWindow):
 	
 
 	def displayClicks(self):
+		"""
+		Update the LCDs showing clicks and major deducts.
+		"""
 		clicks = self.curClicks
 		self.ui.plusClicksLcd.display(clicks.plusClicks)
 		self.ui.minusClicksLcd.display(clicks.minusClicks)
@@ -253,6 +282,10 @@ class MainWindow(QMainWindow):
 
 	
 	def resetClicks(self):
+		"""
+		Reset all clicks to zero so we can start over with the next freestyle.
+		"""
+
 		# Make it so we can undo.
 		# Note that this doesn't check if anything was actually changed.
 		# If they start up, immediately reset, click some, and then undo,
@@ -261,14 +294,14 @@ class MainWindow(QMainWindow):
 		# really wants to do that.
 		self.ui.actionUndoReset.setEnabled(True)
 
-		# Back up first
+		# Back up first.
 		self.lastClicks.plusClicks = self.curClicks.plusClicks
 		self.lastClicks.minusClicks = self.curClicks.minusClicks
 		self.lastClicks.majDeductLv1Clicks = self.curClicks.majDeductLv1Clicks
 		self.lastClicks.majDeductLv2Clicks = self.curClicks.majDeductLv2Clicks
 		self.lastClicks.majDeductLv3Clicks = self.curClicks.majDeductLv3Clicks
 
-		# Do the reset part
+		# Do the reset part.
 		self.curClicks.plusClicks = 0
 		self.curClicks.minusClicks = 0
 		self.curClicks.majDeductLv1Clicks = 0
@@ -278,7 +311,14 @@ class MainWindow(QMainWindow):
 		self.displayClicks()
 	
 
-	def timerStartPause(self, forceStop = False):
+	def timerStartPause(self, forceStop:bool = False):
+		"""
+		Start or stop (whicever makes sense) the freestyle timer.
+		Also reset and restart it if the time was up.
+
+		forceStop - Set to True to guarantee a stop.
+		"""
+
 		# If the timer is already running, pause it.
 		if self.fsTimer.isActive() == True or forceStop == True:
 			# Cache the remaining time and stop the fs timer.
@@ -311,6 +351,10 @@ class MainWindow(QMainWindow):
 	
 
 	def timerReset(self):
+		"""
+		Reset the timer. Also stop it if it was running.
+		"""
+
 		# Stop everything.
 		self.fsTimer.stop()
 		self.dispRefreshTimer.stop()
