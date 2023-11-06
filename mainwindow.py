@@ -78,8 +78,11 @@ class MainWindow(QMainWindow):
 			self.timeRemaining = self.fsTimer.remainingTime()
 
 		# Center the digits, in the way a QLCDNumber understands.
-		# self.ui.timeElapsedLcd.setDigitCount()
-		# loool
+		totalDigits = 5
+		if self.prefs.timerDigits > 0:
+			totalDigits += self.prefs.timerDigits + 1
+		self.ui.timeElapsedLcd.setDigitCount(totalDigits)
+		self.ui.timeRemainingLcd.setDigitCount(totalDigits)
 
 		# Figure out how much time is left.
 		timeElapsed = self.prefs.fsLength - self.timeRemaining
