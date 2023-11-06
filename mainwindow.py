@@ -54,9 +54,9 @@ class MainWindow(QMainWindow):
 		self.fsTimer = QTimer()
 		self.fsTimer.setTimerType(Qt.TimerType.PreciseTimer)
 		self.fsTimer.setSingleShot(True)
-		self.fsTimer.setInterval(self.prefs.totalTimeSetting())
+		self.fsTimer.setInterval(self.prefs.fsLength)
 		self.fsTimer.timeout.connect(self.timerFinished)
-		self.timeRemaining = self.prefs.totalTimeSetting()
+		self.timeRemaining = self.prefs.fsLength
 
 		# We're less concerned about dispRefreshTimer's accuracy.
 		# It doesn't really matter.
@@ -65,12 +65,11 @@ class MainWindow(QMainWindow):
 
 		self.timerRedraw()
 
-
-	# "slots:"
 	
 	@Slot()
 	def timerFinished(self):
 		self.timerStartPause(True)
+	
 	
 	@Slot()
 	def timerRedraw(self):
@@ -83,11 +82,11 @@ class MainWindow(QMainWindow):
 		# loool
 
 		# Figure out how much time is left.
-		timeElapsed = self.prefs.totalTimeSetting() - self.timeRemaining
+		timeElapsed = self.prefs.fsLength - self.timeRemaining
 		# Make things add up on screen.
-		if self.prefs.timerDigits() == 1:
+		if self.prefs.timerDigits == 1:
 			timeElapsed += 99
-		elif self.prefs.timerDigits() == 2:
+		elif self.prefs.timerDigits == 2:
 			timeElapsed += 9
 
 		# PARANOiA.mp3
@@ -99,7 +98,7 @@ class MainWindow(QMainWindow):
 		mm:int = self.timeRemaining / (60 * 1000)
 		# Seconds.
 		ss:int = (((self.timeRemaining % (60 * 1000)) + 
-			(0 if (self.prefs.timerDigits() != 0) else 999)) / 1000)
+			(0 if (self.prefs.timerDigits != 0) else 999)) / 1000)
 		# Oh, we also don't want 2:00 to display as 1:60 when the timer is running.
 		# There might be a more elegant way to handle this.
 		if ss == 60:
@@ -107,14 +106,14 @@ class MainWindow(QMainWindow):
 			mm += 1
 		
 		cc:int = (self.timeRemaining % 1000) / 10
-		if self.prefs.timerDigits() == 1:
+		if self.prefs.timerDigits == 1:
 			cc /= 10
 
 		dispText = ""
 
-		if self.prefs.timerDigits() == 2:
+		if self.prefs.timerDigits == 2:
 			dispText = "{0:0>2d}:{1:0>2d}.{2:0>2d}".format(int(mm), int(ss), int(cc))
-		elif self.prefs.timerDigits() == 1:
+		elif self.prefs.timerDigits == 1:
 			dispText = "{0:0>2d}:{1:0>2d}.{2:0>1d}".format(int(mm), int(ss), int(cc))
 		else: # timerDigits == 0 or > 2
 			dispText = "{0:0>2d}:{1:0>2d}".format(int(mm), int(ss))
@@ -124,12 +123,12 @@ class MainWindow(QMainWindow):
 		mm = timeElapsed / (60 * 1000)
 		ss = (timeElapsed % (60 * 1000)) / 1000
 		cc = (timeElapsed % 1000) / 10
-		if self.prefs.timerDigits() == 1:
+		if self.prefs.timerDigits == 1:
 			cc /= 10
 		
-		if self.prefs.timerDigits() == 2:
+		if self.prefs.timerDigits == 2:
 			dispText = "{0:0>2d}:{1:0>2d}.{2:0>2d}".format(int(mm), int(ss), int(cc))
-		elif self.prefs.timerDigits() == 1:
+		elif self.prefs.timerDigits == 1:
 			dispText = "{0:0>2d}:{1:0>2d}.{2:0>1d}".format(int(mm), int(ss), int(cc))
 		else: # timerDigits == 0 or > 2
 			dispText = "{0:0>2d}:{1:0>2d}".format(int(mm), int(ss))
@@ -146,9 +145,6 @@ class MainWindow(QMainWindow):
 		self.ui.timeRemainingLcd.setPalette(pal)
 		self.ui.timeElapsedLcd.setPalette(pal)
 		
-
-
-
 	
 	@Slot()
 	def undoReset(self):
@@ -161,14 +157,13 @@ class MainWindow(QMainWindow):
 
 		self.displayClicks()
 	
+
 	@Slot()
 	def showPrefDialog(self):
 		d = PrefDialog(self)
 		if d.exec() == QDialog.DialogCode.Accepted:
 			self.timerRedraw()
 
-
-	# "private:"
 
 	def keyPressEvent(self, event: QKeyEvent):
 		# Attempt to defeat autorepeat. May or may not work consistently
@@ -186,13 +181,13 @@ class MainWindow(QMainWindow):
 			self.plusClick()
 		elif key == Qt.Key.Key_Period:
 			# Three plus clicks
-			self.plusClick(self.prefs.multiClickWeight())
+			self.plusClick(self.prefs.multiClickWeight)
 		elif key == Qt.Key.Key_Z:
 			# One minus click
 			self.minusClick()
 		elif key == Qt.Key.Key_X:
 			# Three minus clicks
-			self.minusClick(-1 * self.prefs.multiClickWeight())
+			self.minusClick(-1 * self.prefs.multiClickWeight)
 		elif key == Qt.Key.Key_A:
 			# Major deduct level 1 (restart)
 			self.majorDeductClick(1)
@@ -208,19 +203,23 @@ class MainWindow(QMainWindow):
 		elif key == Qt.Key.Key_W:
 			# Reset the timer
 			self.timerReset()
-	
+
+
 	def keyReleaseEvent(self, event: QKeyEvent):
 		# todo?
 		return
+
 
 	def plusClick(self, qty:int = 1):
 		self.curClicks.plusClicks += qty
 		self.displayClicks()
 	
+
 	def minusClick(self, qty:int = -1):
 		self.curClicks.minusClicks += qty
 		self.displayClicks()
 	
+
 	def majorDeductClick(self, level:int):
 		if level == 1:
 			self.curClicks.majDeductLv1Clicks += self.prefs.MDWeight(1)
@@ -275,6 +274,7 @@ class MainWindow(QMainWindow):
 
 		self.displayClicks()
 	
+
 	def timerStartPause(self, forceStop = False):
 		# If the timer is already running, pause it.
 		if self.fsTimer.isActive() == True or forceStop == True:
@@ -296,23 +296,24 @@ class MainWindow(QMainWindow):
 		else:
 			# Automatically restart if the timer has expired.
 			if self.timeRemaining == 0:
-				self.timeRemaining = self.prefs.totalTimeSetting()
+				self.timeRemaining = self.prefs.fsLength
 			
 			# Load the countdown timer with the total remaining time and kick it off.
 			self.fsTimer.start(self.timeRemaining)
 
 			# Kick off the refresh timer, which will cause a redraw very soon.
-			self.dispRefreshTimer.start(self.prefs.timerDisplayRefresh())
+			self.dispRefreshTimer.start(self.prefs.dispRefresh)
 
 			return True
 	
+
 	def timerReset(self):
 		# Stop everything.
 		self.fsTimer.stop()
 		self.dispRefreshTimer.stop()
 
 		# Reload things afresh.
-		self.timeRemaining = self.prefs.totalTimeSetting()
+		self.timeRemaining = self.prefs.fsLength
 
 		# Redraw timer values.
 		self.timerRedraw()
